@@ -27,7 +27,7 @@ int main()
     }
     catch (...)
     {
-		bSuccess = true;
+		bSuccess = false;
     }
 	std::cout << (bSuccess ? "SUCCESS" : "FAILED") << std::endl;
 	

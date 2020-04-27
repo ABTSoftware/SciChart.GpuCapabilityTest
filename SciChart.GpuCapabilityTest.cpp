@@ -69,66 +69,19 @@ int main()
 			std::cout << "            This might tend to low performance or visual errors.\n";
 		}
 
-		/// Try create D32f ([SC-5383] Fails on Intel HD 4600)
-		try
-		{
-			std::cout << "      Trying to create D32_FLOAT Texture 2D... ";
-			
-			D3D11_TEXTURE2D_DESC textureDesc;
-			textureDesc.ArraySize = 1;
-			textureDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-			textureDesc.CPUAccessFlags = 0;
-			textureDesc.Format = DXGI_FORMAT_D32_FLOAT;
-			textureDesc.Height = 1;
-			textureDesc.Width = 1;
-			textureDesc.MipLevels = 1;
-			textureDesc.SampleDesc.Count = 1;
-			textureDesc.SampleDesc.Quality = 0;
-			textureDesc.Usage = D3D11_USAGE_DEFAULT;
-			textureDesc.MiscFlags = 0;
-			ID3D11Texture2D* pTexture2D;
-			hr = pDevice->CreateTexture2D(&textureDesc, nullptr, &pTexture2D);
-			if (FAILED(hr))
-			{
-				bSuccess = false;
-			}
-			SAFE_RELEASE(pTexture2D);
-		}
-		catch (...)
-		{
-			bSuccess = false;
-		}
-		std::cout << (bSuccess ? "SUCCESS" : "FAILED") << std::endl;
-		
-		// Try create B8G8R8A8 ([SC-5383] Fails on Intel HD 4600)
-		try
-		{
-			std::cout << "      Trying to create B8G8R8A8_UNORM Texture 2D... ";
-
-			D3D11_TEXTURE2D_DESC textureDesc;
-			textureDesc.ArraySize = 1;
-			textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-			textureDesc.CPUAccessFlags = 0;
-			textureDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-			textureDesc.Height = 1;
-			textureDesc.Width = 1;
-			textureDesc.MipLevels = 1;
-			textureDesc.SampleDesc.Count = 1;
-			textureDesc.SampleDesc.Quality = 0;
-			textureDesc.Usage = D3D11_USAGE_DEFAULT;
-			textureDesc.MiscFlags = 0;
-			ID3D11Texture2D* pTexture2D;
-			hr = pDevice->CreateTexture2D(&textureDesc, nullptr, &pTexture2D);
-			if (FAILED(hr))
-			{
-				bSuccess = false;
-			}
-			SAFE_RELEASE(pTexture2D);
-		}
-		catch (...)
-		{
-			bSuccess = false;
-		}
-		std::cout << (bSuccess ? "SUCCESS" : "FAILED") << std::endl;
+		const int ciSufficientVRamSizeMb = 256;
+		std::cout << "      Determining whether the Graphics Adapter has sufficient size of VRAM (" << ciSufficientVRamSizeMb << "Mb)... ";
+		IDXGIDevice* pDXGIDevice;
+		hr = pDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&pDXGIDevice);
+		IDXGIAdapter* pDXGIAdapter;
+		pDXGIDevice->GetAdapter(&pDXGIAdapter);
+		DXGI_ADAPTER_DESC adapterDesc;
+		pDXGIAdapter->GetDesc(&adapterDesc);
+		int iAdapterVRamMb = adapterDesc.DedicatedVideoMemory / 1024 / 1024;
+		bSuccess = iAdapterVRamMb >= ciSufficientVRamSizeMb;
+		SAFE_RELEASE(pDXGIAdapter);
+		std::cout << iAdapterVRamMb << "Mb " << (bSuccess ? "SUCCESS" : "FAILED") << std::endl;
 	}
+
+	SAFE_RELEASE(pDevice);
 }

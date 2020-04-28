@@ -43,7 +43,22 @@ int main()
 		std::cout << "      Trying to create Direct3D11 Device... ";
     	
 	    hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 
-			D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG,
+			0, nullptr, 0, 7, &pDevice, &featureLevel, nullptr);
+	    bSuccess = SUCCEEDED(hr);
+		SAFE_RELEASE(pDevice);
+    }
+    catch (...)
+    {
+		bSuccess = false;
+    }
+	std::cout << (bSuccess ? "SUCCESS" : "FAILED") << std::endl;
+
+	
+	try
+    {
+		std::cout << "      Trying to create Direct3D11 Device with BGRA support... ";
+    	
+	    hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,  D3D11_CREATE_DEVICE_BGRA_SUPPORT,
 			nullptr, 0, 7, &pDevice, &featureLevel, nullptr);
 	    bSuccess = SUCCEEDED(hr);
     }

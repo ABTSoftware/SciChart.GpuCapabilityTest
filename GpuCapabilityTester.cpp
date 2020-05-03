@@ -173,10 +173,10 @@ bool GpuCapabilityTester::CheckDirect3D11IsPreferred(size_t _uAdapterIndex, bool
 		GetDxgiAdapterVRam(_uAdapterIndex) >= gcVxD3d11MinVRam;
 }
 
-size_t GpuCapabilityTester::SuggestDxgiAdapterIndex()
+int GpuCapabilityTester::SuggestDxgiAdapterIndex()
 {
 	size_t uBestRank = 0;
-	size_t uBestAdapterIndex = (std::numeric_limits<size_t>::max)();
+	int iBestAdapterIndex = -1;
 	for (size_t i = 0; i < GetNumberDxgiAdapters(); ++i)
 	{
 		if (IsMicrosoftBasicRenderDriver(i))
@@ -188,11 +188,11 @@ size_t GpuCapabilityTester::SuggestDxgiAdapterIndex()
 		if (curRank > uBestRank)
 		{
 			uBestRank = curRank;
-			uBestAdapterIndex = i;
+			iBestAdapterIndex = i;
 		}
 	}
 
-	return uBestAdapterIndex;
+	return iBestAdapterIndex;
 }
 
 bool TryFindDevice(const std::map<size_t, std::tuple<ID3D11Device*, D3D_FEATURE_LEVEL>>& _map, size_t _uAdapterIndex, ID3D11Device*& _pDeviceOut)

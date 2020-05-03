@@ -25,7 +25,12 @@ int main()
 
 	for (size_t i = 0; i < tester.GetNumberDxgiAdapters(); ++i)
     {
-		wcout << L"      Examining Graphics Adapter " << tester.GetDxgiAdapterName(i) << L" ... " << endl;
+		if (tester.IsMicrosoftBasicRenderDriver(i))
+		{
+			continue;
+		}
+
+		wcout << L"\n      Examining Graphics Adapter: " << tester.GetDxgiAdapterName(i) << endl;
 
 		cout << "         Trying to create Direct3D11 Device... ";
 		if (!tester.TryCreateDirect3D11Device(i, false))
@@ -49,7 +54,7 @@ int main()
 		// Is Features Level sufficient to run Visual Xccelerator Engine using Direct3D11?
 	    if (tester.GetDxgiAdapterVRam(i) < gcVxD3d11MinVRam)
 	    {
-		    cout << "         NOTE: the amount of Video Memory (VRAM) isn't sufficient to run.\n";
+		    cout << "         NOTE: the amount of Video Memory (VRAM) isn't sufficient to run\n";
 		    cout << "               the Visual Xccelerator Engine on this adapter using Direct3D 11.\n";
 		    cout << "               It will fallback to DirectX 9, if this adapter is used.\n";
 			cout << "               This might tend to low performance or visual errors.\n";
@@ -71,4 +76,7 @@ int main()
 		    cout << "               This might tend to low performance or visual errors.\n";
 	    }
     }
+
+	cout << "\nPress any key to exit...";
+	getchar();
 }

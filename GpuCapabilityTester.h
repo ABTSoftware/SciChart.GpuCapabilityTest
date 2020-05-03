@@ -24,6 +24,7 @@ public:
 	bool CheckDirect3D11FeatureLevel11(size_t _uAdapterIndex) const;
 	size_t RankDxgiAdapter(size_t _uAdapterIndex);
 	size_t GetDxgiAdapterVRam(size_t _uAdapterIndex) const;
+	bool IsMicrosoftBasicRenderDriver(size_t _uAdapterIndex) const;
 	std::wstring GetDxgiAdapterName(size_t _uAdapterIndex) const;
 	bool CheckDirect3D11IsPreferred(size_t _uAdapterIndex, bool _bUseLowerFeatureLevel) const;
 

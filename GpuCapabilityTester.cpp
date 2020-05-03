@@ -136,6 +136,15 @@ size_t GpuCapabilityTester::RankDxgiAdapter(size_t _uAdapterIndex)
 	return rank;
 }
 
+bool GpuCapabilityTester::IsMicrosoftBasicRenderDriver(size_t _uAdapterIndex) const
+{
+	assert(_uAdapterIndex < m_vDxgiAdapters.size() && "Argument _uAdapterIndex is out of range!");
+
+	DXGI_ADAPTER_DESC adapterDesc;
+	m_vDxgiAdapters[_uAdapterIndex]->GetDesc(&adapterDesc);
+	return wcscmp(adapterDesc.Description, L"Microsoft Basic Render Driver") == 0;
+}
+
 size_t GpuCapabilityTester::GetDxgiAdapterVRam(size_t _uAdapterIndex) const
 {
 	assert(_uAdapterIndex < m_vDxgiAdapters.size() && "Argument _uAdapterIndex is out of range!");

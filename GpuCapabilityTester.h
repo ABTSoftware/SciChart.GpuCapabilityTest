@@ -27,6 +27,7 @@ public:
 	bool IsMicrosoftBasicRenderDriver(size_t _uAdapterIndex) const;
 	std::wstring GetDxgiAdapterName(size_t _uAdapterIndex) const;
 	bool CheckDirect3D11IsPreferred(size_t _uAdapterIndex, bool _bUseLowerFeatureLevel) const;
+	size_t SuggestDxgiAdapterIndex();
 
 private:
 	IDirect3D9* m_pD3d9Device = nullptr;

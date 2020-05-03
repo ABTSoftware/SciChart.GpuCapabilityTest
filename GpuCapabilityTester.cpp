@@ -173,6 +173,28 @@ bool GpuCapabilityTester::CheckDirect3D11IsPreferred(size_t _uAdapterIndex, bool
 		GetDxgiAdapterVRam(_uAdapterIndex) >= gcVxD3d11MinVRam;
 }
 
+size_t GpuCapabilityTester::SuggestDxgiAdapterIndex()
+{
+	size_t uBestRank = 0;
+	size_t uBestAdapterIndex = (std::numeric_limits<size_t>::max)();
+	for (size_t i = 0; i < GetNumberDxgiAdapters(); ++i)
+	{
+		if (IsMicrosoftBasicRenderDriver(i))
+		{
+			continue;
+		}
+
+		size_t curRank = RankDxgiAdapter(i);
+		if (curRank > uBestRank)
+		{
+			uBestRank = curRank;
+			uBestAdapterIndex = i;
+		}
+	}
+
+	return uBestAdapterIndex;
+}
+
 bool TryFindDevice(const std::map<size_t, std::tuple<ID3D11Device*, D3D_FEATURE_LEVEL>>& _map, size_t _uAdapterIndex, ID3D11Device*& _pDeviceOut)
 {
 	const auto itrDeviceAndFeature = _map.find(_uAdapterIndex);

@@ -3,6 +3,7 @@
 #include <ostream>
 #include <d3d9.h>
 #include <d3d11.h>
+#include <iostream>
 
 #define SAFE_RELEASE( x ) if ( x ) { x->Release(); x = NULL; }
 
@@ -34,7 +35,8 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 			continue;
 		}
 
-		LogMessageFormattedW(L"\nExamining Graphics Adapter: %s %dMb\n", adapterDesc.Description, adapterDesc.DedicatedVideoMemory >> 20);
+		LogMessageLine("\nExamining Graphics Adapter");
+		LogMessageFormattedW(L"\n#%d: %s %dMb\n", i, adapterDesc.Description, adapterDesc.DedicatedVideoMemory >> 20);
 
 		LogMessageLine("\n   Visual Xccelerator Engine Direct3D9 Compatibility");
 
@@ -65,8 +67,8 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 
 		LogMessageLine("\n   Visual Xccelerator Engine Direct3D11 Compatibility");
 
-		LogMessageFormatted("         Is BGRA feature required: %s\n", m_bSupportBgra ? "TRUE" : "FALSE");
-		LogMessage("         Trying to create Direct3D11 Device... ");
+		LogMessageFormatted("      Is BGRA feature required: %s\n", m_bSupportBgra ? "TRUE" : "FALSE");
+		LogMessage("      Trying to create Direct3D11 Device... ");
 		ID3D11Device* pDevice;
 		D3D_FEATURE_LEVEL featureLevel;
 		bool bSuccess;
@@ -94,10 +96,10 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 			}
 			else
 			{
-				LogMessageLine("         NOTE: the amount of Video Memory (VRAM) isn't sufficient to run");
-				LogMessageLine("               the Visual Xccelerator Engine on this adapter using Direct3D 11.");
-				LogMessageLine("               It will fallback to DirectX 9, if this adapter is being used.");
-				LogMessageLine("               This might tend to low performance or visual errors.");
+				LogMessageLine("      NOTE: the amount of Video Memory (VRAM) isn't sufficient to run");
+				LogMessageLine("         the Visual Xccelerator Engine on this adapter using Direct3D 11.");
+				LogMessageLine("         It will fallback to DirectX 9, if this adapter is being used.");
+				LogMessageLine("         This might tend to low performance or visual errors.");
 			}
 
 			// Is Features Level sufficient to run Visual Xccelerator Engine using Direct3D11?
@@ -110,13 +112,13 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 				switch (m_D3d11MinFeatureLevel)
 				{
 				case D3D_FEATURE_LEVEL_10_1:
-					LogMessageLine("         NOTE: the Graphics Adapter does not support Feature Level 10.1");
+					LogMessageLine("      NOTE: the Graphics Adapter does not support Feature Level 10.1");
 					break;
 				case D3D_FEATURE_LEVEL_11_0:
-					LogMessageLine("         NOTE: the Graphics Adapter does not support Feature Level 11.0");
+					LogMessageLine("      NOTE: the Graphics Adapter does not support Feature Level 11.0");
 					break;
 				default:
-					LogMessageLine("         NOTE: the Graphics Adapter does not support specified Feature Level.");
+					LogMessageLine("      NOTE: the Graphics Adapter does not support specified Feature Level.");
 					break;
 				}
 				LogMessageLine("               The Visual Xccelerator Engine will use Direct3D 9, if this adapter is being used.");
@@ -124,7 +126,7 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 			}
 		}
 
-		LogMessageFormatted("         Rank: %d Points\n", rank);
+		LogMessageFormatted("      Rank: %d Points\n", rank);
 
 		if (rank >= bestRank)
 		{
@@ -139,8 +141,8 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 	{
 		LogMessageFormatted("\nSelected Graphics Adapter: #%d\n", _uAdapterIndexOut);
 	}
-	LogMessageFormatted("Is Direct3D9 Supported: %s\n", _bD3d9SupportOut ? "TRUE" : "FALSE");
-	LogMessageFormatted("Is Direct3D11 Supported: %s\n", _bD3d11SupportOut ? "TRUE" : "FALSE");
+	LogMessageFormatted("   Is Direct3D9 Supported: %s\n", _bD3d9SupportOut ? "TRUE" : "FALSE");
+	LogMessageFormatted("   Is Direct3D11 Supported: %s\n", _bD3d11SupportOut ? "TRUE" : "FALSE");
 
 	SAFE_RELEASE(pFactory);
 }
@@ -150,6 +152,11 @@ void GpuCapabilityTester::LogMessage(const char* _acMsg) const
 	if (m_bVerbose)
 	{
 		OutputDebugStringA(_acMsg);
+
+		if (m_bOutputToConsole)
+		{
+			cout << _acMsg;
+		}
 	}
 }
 
@@ -165,6 +172,11 @@ void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...) const
 		__crt_va_end(_ArgList);
 
 		OutputDebugStringA(aBuffer);
+
+		if (m_bOutputToConsole)
+		{
+			cout << aBuffer;
+		}
 	}
 }
 
@@ -173,6 +185,11 @@ void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg) const
 	if (m_bVerbose)
 	{
 		OutputDebugStringW(_acMsg);
+
+		if (m_bOutputToConsole)
+		{
+			wcout << _acMsg;
+		}
 	}
 }
 
@@ -188,6 +205,11 @@ void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...) co
 		__crt_va_end(_ArgList);
 
 		OutputDebugStringW(aBuffer);
+
+		if (m_bOutputToConsole)
+		{
+			wcout << aBuffer;
+		}
 	}
 }
 
@@ -197,6 +219,11 @@ void GpuCapabilityTester::LogMessageLine(const char* _acMsg) const
 	{
 		OutputDebugStringA(_acMsg);
 		OutputDebugStringA("\n");
+
+		if (m_bOutputToConsole)
+		{
+			wcout << _acMsg << endl;
+		}
 	}
 }
 
@@ -206,5 +233,10 @@ void GpuCapabilityTester::LogMessageLineW(const wchar_t* _acMsg) const
 	{
 		OutputDebugStringW(_acMsg);
 		OutputDebugStringW(L"\n");
+
+		if (m_bOutputToConsole)
+		{
+			wcout << _acMsg << endl;
+		}
 	}
 }

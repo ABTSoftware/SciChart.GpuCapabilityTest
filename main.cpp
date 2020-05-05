@@ -10,7 +10,8 @@ int main()
 {
 	bool _bD3d9SupportOut, _bD3d11SupportOut;
 	int _uAdapterIndexOut;
-    GpuCapabilityTester tester;	
+    GpuCapabilityTester tester;
+	tester.SetOutputToConsole(true);
 	tester.Run(_bD3d9SupportOut, _bD3d11SupportOut, _uAdapterIndexOut);
 
 	cout << "\nPress any key to exit...";

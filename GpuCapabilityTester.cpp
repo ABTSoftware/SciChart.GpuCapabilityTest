@@ -1,220 +1,210 @@
 #include "GpuCapabilityTester.h"
 #include <cassert>
-#include <tuple>
+#include <ostream>
+#include <d3d9.h>
+#include <d3d11.h>
 
 #define SAFE_RELEASE( x ) if ( x ) { x->Release(); x = NULL; }
 
 using namespace std;
 
-// Helper functions
-bool TryFindDevice(const std::map<size_t, std::tuple<ID3D11Device*, D3D_FEATURE_LEVEL>>& _map, size_t _uAdapterIndex, ID3D11Device*& _pDeviceOut);
-bool TryFindFeature(const std::map<size_t, std::tuple<ID3D11Device*, D3D_FEATURE_LEVEL>>& _map, size_t _uAdapterIndex, D3D_FEATURE_LEVEL& _FeatureOut);
-
-GpuCapabilityTester::GpuCapabilityTester()
+void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, int& _uAdapterIndexOut)
 {
-	IDXGIAdapter* pAdapter;
+	_bD3d9SupportOut = _bD3d11SupportOut = false;
 	IDXGIFactory* pFactory = nullptr;
-	
+
+	LogMessageLine("### GPU Capability Test ###");
+
 	// Create a DXGIFactory object.
-	if (SUCCEEDED(CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&pFactory))))
+	if (FAILED(CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&pFactory))))
 	{
-		for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
-		{
-			m_vDxgiAdapters.push_back(pAdapter);
-		}
-
-		SAFE_RELEASE(pFactory);
-	}
-}
-
-GpuCapabilityTester::~GpuCapabilityTester()
-{
-	SAFE_RELEASE(m_pD3d9Device);
-	for(auto& pair : m_mapD3d11DevicesAndFeatures)
-	{
-		get<0>(pair.second)->Release();
-	}
-	m_mapD3d11DevicesAndFeatures.clear();
-}
-
-bool GpuCapabilityTester::TryCreateDirect3D9Device()
-{
-	try
-	{
-		SAFE_RELEASE(m_pD3d9Device);
-		m_pD3d9Device = Direct3DCreate9(D3D_SDK_VERSION);
-		return m_pD3d9Device != nullptr;
-	}
-	catch (...)
-	{
-		return false;
-	}
-}
-
-size_t GpuCapabilityTester::GetNumberDxgiAdapters() const
-{
-	return m_vDxgiAdapters.size();
-}
-
-bool GpuCapabilityTester::TryCreateDirect3D11Device(size_t _uAdapterIndex, bool _bSupportBgra)
-{
-	assert(_uAdapterIndex < m_vDxgiAdapters.size() && "Argument _uAdapterIndex is out of range!");
-	
-	try
-	{
-		// Remove previously created Device for the specified adapter, if any
-		ID3D11Device* pDevice;
-		if (TryFindDevice(m_mapD3d11DevicesAndFeatures, _uAdapterIndex, pDevice))
-		{
-			pDevice->Release();
-			m_mapD3d11DevicesAndFeatures.erase(_uAdapterIndex);
-		}
-		
-		D3D_FEATURE_LEVEL featureLevel;
-		HRESULT hr = D3D11CreateDevice(/*m_vDxgiAdapters[_uAdapterIndex]*/nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
-			 _bSupportBgra ? D3D11_CREATE_DEVICE_BGRA_SUPPORT : 0, nullptr, 0, 7,
-			&pDevice, &featureLevel, nullptr);
-
-		if (SUCCEEDED(hr))
-		{
-			m_mapD3d11DevicesAndFeatures.insert({ _uAdapterIndex, { pDevice , featureLevel } });
-			
-			return true;
-		}
-
-		return false;
-	}
-	catch (...)
-	{
-		return false;
-	}
-}
-
-bool GpuCapabilityTester::CheckDirect3D11FeatureLevel10(size_t _uAdapterIndex) const
-{
-	D3D_FEATURE_LEVEL featureLevel;
-	if (!TryFindFeature(m_mapD3d11DevicesAndFeatures, _uAdapterIndex, featureLevel))
-	{
-		assert(0 && "First, call TryCreateDirect3D11Device() with the same adapter index and make sure it succeedes!");
+		LogMessageLineW(L"\nERROR: Unable to create IDXGI Factory.");
 	}
 
-	return featureLevel >= D3D_FEATURE_LEVEL_10_0;
-}
-
-bool GpuCapabilityTester::CheckDirect3D11FeatureLevel11(size_t _uAdapterIndex) const
-{
-	D3D_FEATURE_LEVEL featureLevel;
-	if (!TryFindFeature(m_mapD3d11DevicesAndFeatures, _uAdapterIndex, featureLevel))
+	IDXGIAdapter* pAdapter;
+	size_t bestRank = 0;
+	for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
 	{
-		assert(0 && "First, call TryCreateDirect3D11Device() with the same adapter index and make sure it succeedes!");
-	}
+		DXGI_ADAPTER_DESC adapterDesc;
+		pAdapter->GetDesc(&adapterDesc);
 
-	return featureLevel >= D3D_FEATURE_LEVEL_11_0;
-}
-
-size_t GpuCapabilityTester::RankDxgiAdapter(size_t _uAdapterIndex)
-{
-	size_t rank = 0;
-
-	if (TryCreateDirect3D9Device())
-	{
-		rank += 10;
-
-		if (TryCreateDirect3D11Device(_uAdapterIndex, true) &&
-			CheckDirect3D11FeatureLevel10(_uAdapterIndex) &&
-			GetDxgiAdapterVRam(_uAdapterIndex) >= gcVxD3d11MinVRam)
-		{
-			rank += 100 * GetDxgiAdapterVRam(_uAdapterIndex) / gcVxD3d11MinVRam;
-
-			if (CheckDirect3D11FeatureLevel11(_uAdapterIndex))
-			{
-				rank += 100;
-			}
-		}
-	}
-	
-	return rank;
-}
-
-bool GpuCapabilityTester::IsMicrosoftBasicRenderDriver(size_t _uAdapterIndex) const
-{
-	assert(_uAdapterIndex < m_vDxgiAdapters.size() && "Argument _uAdapterIndex is out of range!");
-
-	DXGI_ADAPTER_DESC adapterDesc;
-	m_vDxgiAdapters[_uAdapterIndex]->GetDesc(&adapterDesc);
-	return wcscmp(adapterDesc.Description, L"Microsoft Basic Render Driver") == 0;
-}
-
-size_t GpuCapabilityTester::GetDxgiAdapterVRam(size_t _uAdapterIndex) const
-{
-	assert(_uAdapterIndex < m_vDxgiAdapters.size() && "Argument _uAdapterIndex is out of range!");
-
-	DXGI_ADAPTER_DESC adapterDesc;
-	m_vDxgiAdapters[_uAdapterIndex]->GetDesc(&adapterDesc);
-	
-	return adapterDesc.DedicatedVideoMemory;
-}
-
-wstring GpuCapabilityTester::GetDxgiAdapterName(size_t _uAdapterIndex) const
-{
-	assert(_uAdapterIndex < m_vDxgiAdapters.size() && "Argument _uAdapterIndex is out of range!");
-
-	DXGI_ADAPTER_DESC adapterDesc;
-	m_vDxgiAdapters[_uAdapterIndex]->GetDesc(&adapterDesc);
-	wstring ret{ adapterDesc.Description };
-	
-	return ret;
-}
-
-bool GpuCapabilityTester::CheckDirect3D11IsPreferred(size_t _uAdapterIndex, bool _bUseLowerFeatureLevel) const
-{
-	return CheckDirect3D11FeatureLevel10(_uAdapterIndex) &&
-		(!_bUseLowerFeatureLevel || CheckDirect3D11FeatureLevel11(_uAdapterIndex)) &&
-		GetDxgiAdapterVRam(_uAdapterIndex) >= gcVxD3d11MinVRam;
-}
-
-int GpuCapabilityTester::SuggestDxgiAdapterIndex()
-{
-	size_t uBestRank = 0;
-	int iBestAdapterIndex = -1;
-	for (size_t i = 0; i < GetNumberDxgiAdapters(); ++i)
-	{
-		if (IsMicrosoftBasicRenderDriver(i))
+		// Skip Microsoft Basic Render Driver
+		if (wcscmp(adapterDesc.Description, L"Microsoft Basic Render Driver") == 0)
 		{
 			continue;
 		}
 
-		size_t curRank = RankDxgiAdapter(i);
-		if (curRank > uBestRank)
+		LogMessageFormattedW(L"\nExamining Graphics Adapter: %s %dMb\n", adapterDesc.Description, adapterDesc.DedicatedVideoMemory >> 20);
+
+		LogMessageLine("\n   Visual Xccelerator Engine Direct3D9 Compatibility");
+
+		size_t rank = 0;
+
+		LogMessage("      Trying to create Direct3D9 Device... ");
+		try
 		{
-			uBestRank = curRank;
-			iBestAdapterIndex = i;
+			IDirect3D9* pDevice = Direct3DCreate9(D3D_SDK_VERSION);
+			_bD3d9SupportOut = pDevice != nullptr;
+			SAFE_RELEASE(pDevice);
 		}
+		catch (...)
+		{
+			_bD3d9SupportOut = false;
+		}
+		if (_bD3d9SupportOut)
+		{
+			LogMessageLine("SUCCESS");
+		}
+		else
+		{
+			LogMessageLine("FAILED");
+			// Skip
+			continue;
+		}
+		rank += 10;
+
+		LogMessageLine("\n   Visual Xccelerator Engine Direct3D11 Compatibility");
+
+		LogMessageFormatted("         Is BGRA feature required: %s\n", m_bSupportBgra ? "TRUE" : "FALSE");
+		LogMessage("         Trying to create Direct3D11 Device... ");
+		ID3D11Device* pDevice;
+		D3D_FEATURE_LEVEL featureLevel;
+		bool bSuccess;
+		try
+		{
+			HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+				m_bSupportBgra ? D3D11_CREATE_DEVICE_BGRA_SUPPORT : 0, nullptr, 0, 7,
+				&pDevice, &featureLevel, nullptr);
+
+			bSuccess = SUCCEEDED(hr);
+		}
+		catch (...)
+		{
+			bSuccess = false;
+		}
+		LogMessageLine(bSuccess ? "SUCCESS" : "FAILED");
+
+		if (bSuccess)
+		{
+			// Is Features Level sufficient to run Visual Xccelerator Engine using Direct3D11?
+			double dMemoryRank = static_cast<double>(adapterDesc.DedicatedVideoMemory) / GetD3d11MinVRam();
+			if (dMemoryRank >= 1.0)
+			{
+				rank += static_cast<size_t>(dMemoryRank * 100.0);
+			}
+			else
+			{
+				LogMessageLine("         NOTE: the amount of Video Memory (VRAM) isn't sufficient to run");
+				LogMessageLine("               the Visual Xccelerator Engine on this adapter using Direct3D 11.");
+				LogMessageLine("               It will fallback to DirectX 9, if this adapter is being used.");
+				LogMessageLine("               This might tend to low performance or visual errors.");
+			}
+
+			// Is Features Level sufficient to run Visual Xccelerator Engine using Direct3D11?
+			if (featureLevel >= m_D3d11MinFeatureLevel)
+			{
+				rank += 1000;
+			}
+			else
+			{
+				switch (m_D3d11MinFeatureLevel)
+				{
+				case D3D_FEATURE_LEVEL_10_1:
+					LogMessageLine("         NOTE: the Graphics Adapter does not support Feature Level 10.1");
+					break;
+				case D3D_FEATURE_LEVEL_11_0:
+					LogMessageLine("         NOTE: the Graphics Adapter does not support Feature Level 11.0");
+					break;
+				default:
+					LogMessageLine("         NOTE: the Graphics Adapter does not support specified Feature Level.");
+					break;
+				}
+				LogMessageLine("               The Visual Xccelerator Engine will use Direct3D 9, if this adapter is being used.");
+				LogMessageLine("               This might tend to low performance or visual errors.");
+			}
+		}
+
+		LogMessageFormatted("         Rank: %d Points\n", rank);
+
+		if (rank >= bestRank)
+		{
+			_bD3d11SupportOut = true;
+			_uAdapterIndexOut = i;
+		}
+
+		SAFE_RELEASE(pDevice);
 	}
 
-	return iBestAdapterIndex;
+	if (_bD3d9SupportOut)
+	{
+		LogMessageFormatted("\nSelected Graphics Adapter: #%d\n", _uAdapterIndexOut);
+	}
+	LogMessageFormatted("Is Direct3D9 Supported: %s\n", _bD3d9SupportOut ? "TRUE" : "FALSE");
+	LogMessageFormatted("Is Direct3D11 Supported: %s\n", _bD3d11SupportOut ? "TRUE" : "FALSE");
+
+	SAFE_RELEASE(pFactory);
 }
 
-bool TryFindDevice(const std::map<size_t, std::tuple<ID3D11Device*, D3D_FEATURE_LEVEL>>& _map, size_t _uAdapterIndex, ID3D11Device*& _pDeviceOut)
+void GpuCapabilityTester::LogMessage(const char* _acMsg) const
 {
-	const auto itrDeviceAndFeature = _map.find(_uAdapterIndex);
-	if (itrDeviceAndFeature == _map.end())
+	if (m_bVerbose)
 	{
-		return false;
+		OutputDebugStringA(_acMsg);
 	}
-
-	_pDeviceOut = get<0>(itrDeviceAndFeature->second);
-	return true;
 }
 
-bool TryFindFeature(const std::map<size_t, std::tuple<ID3D11Device*, D3D_FEATURE_LEVEL>>& _map, size_t _uAdapterIndex, D3D_FEATURE_LEVEL& _FeatureOut)
+void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...) const
 {
-	const auto itrDeviceAndFeature = _map.find(_uAdapterIndex);
-	if (itrDeviceAndFeature == _map.end())
+	if (m_bVerbose)
 	{
-		return false;
-	}
+		char aBuffer[1024];
+		va_list _ArgList;
+		__crt_va_start(_ArgList, _acFormat);
+#pragma warning(suppress:28719)    // 28719
+		vsnprintf(aBuffer, 1024, _acFormat, _ArgList);
+		__crt_va_end(_ArgList);
 
-	_FeatureOut = get<1>(itrDeviceAndFeature->second);
-	return true;
+		OutputDebugStringA(aBuffer);
+	}
+}
+
+void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg) const
+{
+	if (m_bVerbose)
+	{
+		OutputDebugStringW(_acMsg);
+	}
+}
+
+void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...) const
+{
+	if (m_bVerbose)
+	{
+		wchar_t aBuffer[1024];
+		va_list _ArgList;
+		__crt_va_start(_ArgList, _acFormat);
+#pragma warning(suppress:28719)    // 28719
+		vswprintf(aBuffer, 1024, _acFormat, _ArgList);
+		__crt_va_end(_ArgList);
+
+		OutputDebugStringW(aBuffer);
+	}
+}
+
+void GpuCapabilityTester::LogMessageLine(const char* _acMsg) const
+{
+	if (m_bVerbose)
+	{
+		OutputDebugStringA(_acMsg);
+		OutputDebugStringA("\n");
+	}
+}
+
+void GpuCapabilityTester::LogMessageLineW(const wchar_t* _acMsg) const
+{
+	if (m_bVerbose)
+	{
+		OutputDebugStringW(_acMsg);
+		OutputDebugStringW(L"\n");
+	}
 }

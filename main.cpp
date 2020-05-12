@@ -9,10 +9,10 @@ using namespace std;
 int main()
 {
 	bool _bD3d9SupportOut, _bD3d11SupportOut;
-	int _uAdapterIndexOut;
+	unsigned _uAdapterDeviceId;
     GpuCapabilityTester tester;
 	tester.SetOutputToConsole(true);
-	tester.Run(_bD3d9SupportOut, _bD3d11SupportOut, _uAdapterIndexOut);
+	tester.Run(_bD3d9SupportOut, _bD3d11SupportOut, _uAdapterDeviceId);
 
 	cout << "\nPress any key to exit...";
 	getchar();

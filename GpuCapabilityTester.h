@@ -1,5 +1,9 @@
 #pragma once
 
+#include <limits>
+
+const unsigned giNoOptimalAdapterFound = std::numeric_limits<unsigned>::max();
+
 class GpuCapabilityTester
 {
 public:
@@ -18,7 +22,7 @@ public:
 	size_t GetOutputToConsole() const { return m_bOutputToConsole; }
 	void SetOutputToConsole(bool _bValue) { m_bOutputToConsole = _bValue; }
 
-	void Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, int& _uAdapterIndexOut);
+	void Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, unsigned& _uAdapterDeviceId);
 
 private:
 	void LogMessage(const char* _acMsg) const;

@@ -2,7 +2,7 @@
 #include <cassert>
 #include <ostream>
 #include <iostream>
-#include <vector>
+#include <map>
 #include <d3d9.h>
 #include <d3d11.h>
 
@@ -12,12 +12,12 @@ using namespace std;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
-void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, int& _uAdapterIndexOut)
+void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, unsigned& _uAdapterDeviceId)
 {
-	vector<bool> vD3d9Support;
-	vector<bool> vD3d11Support;
+	map<unsigned, bool> vD3d9Support;
+	map<unsigned, bool> vD3d11Support;
 
-	_uAdapterIndexOut = -1;
+	_uAdapterDeviceId = giNoOptimalAdapterFound;
 	_bD3d9SupportOut = _bD3d11SupportOut = false;
 	IDXGIFactory* pFactory = nullptr;
 
@@ -51,7 +51,7 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 	//ShowWindow(windowHandle, SW_RESTORE);
 
 	// Define DirectX 9 Creation Parameters
-	
+
 	unsigned int uCreationFlags = D3DCREATE_MULTITHREADED | D3DCREATE_FPU_PRESERVE | D3DCREATE_HARDWARE_VERTEXPROCESSING;
 
 	D3DPRESENT_PARAMETERS presentParams;
@@ -85,9 +85,6 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 	size_t bestRank = 0;
 	for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
 	{
-		vD3d9Support.push_back(false);
-		vD3d11Support.push_back(false);
-
 		DXGI_ADAPTER_DESC adapterDesc;
 		pAdapter->GetDesc(&adapterDesc);
 
@@ -97,11 +94,14 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 			continue;
 		}
 
-		LogMessageFormattedW(L"\nExamining Graphics Adapter #%d: %s %dMb\n", i, adapterDesc.Description, adapterDesc.DedicatedVideoMemory >> 20);
+		LogMessageFormattedW(L"\nExamining Graphics Adapter: %s\n", adapterDesc.Description);
+		LogMessageFormattedW(L"   VRAM: %dMb\n", adapterDesc.DedicatedVideoMemory >> 20);
+		LogMessageFormattedW(L"   DeiceId: %d\n", adapterDesc.DeviceId);
 
 		LogMessageLine("\n   Visual Xccelerator Engine Direct3D9 Compatibility");
 
 		size_t rank = 0;
+		size_t dx9AdapterIndex = 0;
 
 		LogMessage("      Trying to create Direct3D9 Device... ");
 		try
@@ -110,105 +110,95 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 
 			IDirect3DDevice9* pD3dDevice9 = nullptr;
 			size_t iNumberAdapters = pD3d9->GetAdapterCount();
-			for (int j = 0; j < iNumberAdapters; ++j)
+			for (; dx9AdapterIndex < iNumberAdapters; ++dx9AdapterIndex)
 			{
 				D3DADAPTER_IDENTIFIER9 ai;
-				pD3d9->GetAdapterIdentifier(j, 0, &ai);
+				pD3d9->GetAdapterIdentifier(dx9AdapterIndex, 0, &ai);
 
 				if (ai.DeviceId != adapterDesc.DeviceId)
 				{
 					continue;
 				}
 
-				pD3d9->CreateDevice(j, D3DDEVTYPE_HAL, nullptr, uCreationFlags, &presentParams, &pD3dDevice9);
+				pD3d9->CreateDevice(dx9AdapterIndex, D3DDEVTYPE_HAL, nullptr, uCreationFlags, &presentParams, &pD3dDevice9);
 				break;
 			}
 
-			vD3d9Support[i] = pD3dDevice9 != nullptr;
+			vD3d9Support[adapterDesc.DeviceId] = pD3dDevice9 != nullptr;
 			SAFE_RELEASE(pD3dDevice9);
 			SAFE_RELEASE(pD3d9);
 		}
 		catch (...)
 		{
-			vD3d9Support[i] = false;
+			vD3d9Support[adapterDesc.DeviceId] = false;
 		}
-		if (vD3d9Support[i])
+		if (vD3d9Support[adapterDesc.DeviceId])
 		{
 			LogMessageLine("SUCCESS");
 		}
 		else
 		{
 			LogMessageLine("FAILED");
-			// Skip
-			continue;
 		}
 		rank += 10;
 
 		LogMessageLine("\n   Visual Xccelerator Engine Direct3D11 Compatibility");
 
 		LogMessage("      Trying to create Direct3D9Ex Device (WPF Compatibility)... ");
-		bool bSuccess;
+		bool bD3d9ExSuccess;
 		try
 		{
-			IDirect3D9Ex* pD3d9;
-			HRESULT hr = Direct3DCreate9Ex(D3D_SDK_VERSION, &pD3d9);
-
+			IDirect3D9Ex* pD3d9 = nullptr;
 			IDirect3DDevice9Ex* pD3dDevice9 = nullptr;
-			if (SUCCEEDED(hr))
-			{
-				size_t iNumberAdapters = pD3d9->GetAdapterCount();
-				for (int j = 0; j < iNumberAdapters; ++j)
-				{
-					D3DADAPTER_IDENTIFIER9 ai;
-					pD3d9->GetAdapterIdentifier(j, 0, &ai);
-
-					if (ai.DeviceId != adapterDesc.DeviceId)
-					{
-						continue;
-					}
-
-					pD3d9->CreateDeviceEx(j, D3DDEVTYPE_HAL, nullptr, uCreationFlags, &presentParams, nullptr, &pD3dDevice9);
-					break;
-				}
-			}
-
-			bSuccess = pD3dDevice9 != nullptr;
+			bD3d9ExSuccess =
+				SUCCEEDED(Direct3DCreate9Ex(D3D_SDK_VERSION, &pD3d9)) &&
+				SUCCEEDED(pD3d9->CreateDeviceEx(dx9AdapterIndex, D3DDEVTYPE_HAL, nullptr, uCreationFlags, &presentParams, nullptr, &pD3dDevice9));
 			SAFE_RELEASE(pD3dDevice9);
 			SAFE_RELEASE(pD3d9);
 		}
 		catch (...)
 		{
-			bSuccess = false;
+			bD3d9ExSuccess = false;
 		}
-		if (bSuccess)
+		if (bD3d9ExSuccess)
 		{
 			LogMessageLine("SUCCESS");
 		}
 		else
 		{
 			LogMessageLine("FAILED");
-			// Skip
-			continue;
 		}
+
+		vD3d11Support[adapterDesc.DeviceId] = bD3d9ExSuccess;
 
 		LogMessage("      Trying to create Direct3D11 Device... ");
 		ID3D11Device* pDevice;
 		D3D_FEATURE_LEVEL featureLevel;
+		bool bD3d11Success;
 		try
 		{
-			HRESULT hr = D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
+			bD3d11Success = SUCCEEDED(D3D11CreateDevice(pAdapter, D3D_DRIVER_TYPE_UNKNOWN, nullptr,
 				m_bSupportBgra ? D3D11_CREATE_DEVICE_BGRA_SUPPORT : 0, nullptr, 0, 7,
-				&pDevice, &featureLevel, nullptr);
-
-			vD3d11Support[i] = SUCCEEDED(hr);
+				&pDevice, &featureLevel, nullptr));
 		}
 		catch (...)
 		{
-			vD3d11Support[i] = false;
+			bD3d11Success = false;
 		}
-		LogMessageLine(vD3d11Support[i] ? "SUCCESS" : "FAILED");
+		LogMessageLine(bD3d11Success ? "SUCCESS" : "FAILED");
 
-		if (vD3d11Support[i])
+		vD3d11Support[adapterDesc.DeviceId] &= bD3d11Success;
+
+		if (!bD3d9ExSuccess && bD3d11Success)
+		{
+			LogMessageLine("\n      NOTE: the adapter is able to create Direct3D11 Device,");
+			LogMessageLine("      hovewer for some reason it's unable to create DirectX9Ex Device.");
+			LogMessageLine("      It looks like the adapter is not connected to a monitor.");
+			LogMessageLine("      If you would like to run the SciChart on this adapter,");
+			LogMessageLine("      please make sure that the monitor cable is plugged in.");
+		}
+
+		if (vD3d11Support[adapterDesc.DeviceId])
 		{
 			// Is Features Level sufficient to run Visual Xccelerator Engine using Direct3D11?
 			double dMemoryRank = static_cast<double>(adapterDesc.DedicatedVideoMemory) / GetD3d11MinVRam();
@@ -218,7 +208,7 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 			}
 			else
 			{
-				LogMessageLine("      NOTE: the amount of Video Memory (VRAM) isn't sufficient to run");
+				LogMessageLine("\n      NOTE: the amount of Video Memory (VRAM) isn't sufficient to run");
 				LogMessageLine("         the Visual Xccelerator Engine on this adapter using Direct3D 11.");
 				LogMessageLine("         It will fallback to DirectX 9, if this adapter is being used.");
 				LogMessageLine("         This might tend to low performance or visual errors.");
@@ -234,13 +224,13 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 				switch (m_D3d11MinFeatureLevel)
 				{
 				case D3D_FEATURE_LEVEL_10_1:
-					LogMessageLine("      NOTE: the Graphics Adapter does not support Feature Level 10.1");
+					LogMessageLine("\n      NOTE: the Graphics Adapter does not support Feature Level 10.1");
 					break;
 				case D3D_FEATURE_LEVEL_11_0:
-					LogMessageLine("      NOTE: the Graphics Adapter does not support Feature Level 11.0");
+					LogMessageLine("\n      NOTE: the Graphics Adapter does not support Feature Level 11.0");
 					break;
 				default:
-					LogMessageLine("      NOTE: the Graphics Adapter does not support specified Feature Level.");
+					LogMessageLine("\n      NOTE: the Graphics Adapter does not support specified Feature Level.");
 					break;
 				}
 				LogMessageLine("               The Visual Xccelerator Engine will use Direct3D 9, if this adapter is being used.");
@@ -248,23 +238,23 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, i
 			}
 		}
 
-		LogMessageFormatted("      Rank: %d Points\n", rank);
+		LogMessageFormatted("\n   Rank: %d Points\n", rank);
 
 		if (rank >= bestRank)
 		{
-			_bD3d11SupportOut = true;
-			_uAdapterIndexOut = i;
+			_uAdapterDeviceId = adapterDesc.DeviceId;
+			bestRank = rank;
 		}
 
 		SAFE_RELEASE(pDevice);
 	}
 
-	if (_uAdapterIndexOut >= 0)
+	if (_uAdapterDeviceId != giNoOptimalAdapterFound)
 	{
-		_bD3d9SupportOut = vD3d9Support[_uAdapterIndexOut];
-		_bD3d11SupportOut = vD3d11Support[_uAdapterIndexOut];
+		_bD3d9SupportOut = vD3d9Support[_uAdapterDeviceId];
+		_bD3d11SupportOut = vD3d11Support[_uAdapterDeviceId];
 
-		LogMessageFormatted("\nSelected Graphics Adapter: #%d\n", _uAdapterIndexOut);
+		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", _uAdapterDeviceId);
 		LogMessageFormatted("   Is Direct3D9 Supported: %s\n", _bD3d9SupportOut ? "TRUE" : "FALSE");
 		LogMessageFormatted("   Is Direct3D11 Supported: %s\n", _bD3d11SupportOut ? "TRUE" : "FALSE");
 	}

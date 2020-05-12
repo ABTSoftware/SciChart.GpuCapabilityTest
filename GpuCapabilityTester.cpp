@@ -36,7 +36,7 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, u
 		LogMessageLine("Could not register a Window class");
 	}
 
-	HWND windowHandle = CreateWindow(L"A dummy Window",
+	HWND windowHandle = CreateWindowA("A dummy Window",
 		nullptr,
 		WS_POPUP, //borderless
 		0, //x coordinate of window start point

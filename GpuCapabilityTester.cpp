@@ -247,6 +247,7 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, u
 		}
 
 		SAFE_RELEASE(pDevice);
+		SAFE_RELEASE(pAdapter);
 	}
 
 	if (_uAdapterDeviceId != giNoOptimalAdapterFound)

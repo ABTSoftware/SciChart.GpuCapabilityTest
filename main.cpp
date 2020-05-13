@@ -12,6 +12,7 @@ int main()
 	unsigned _uAdapterDeviceId;
     GpuCapabilityTester tester;
 	tester.SetOutputToConsole(true);
+	tester.SetOutputToFile(true);
 	tester.Run(_bD3d9SupportOut, _bD3d11SupportOut, _uAdapterDeviceId);
 
 	cout << "\nPress any key to exit...";

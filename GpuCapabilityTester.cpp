@@ -1,6 +1,6 @@
 #include "GpuCapabilityTester.h"
 #include <cassert>
-#include <ostream>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <d3d9.h>
@@ -9,6 +9,8 @@
 #define SAFE_RELEASE( x ) if ( x ) { x->Release(); x = nullptr; }
 
 using namespace std;
+
+const char gOutputFileName[] = "GpuCapability.log";
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
 
@@ -20,6 +22,9 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, u
 	_uAdapterDeviceId = giNoOptimalAdapterFound;
 	_bD3d9SupportOut = _bD3d11SupportOut = false;
 	IDXGIFactory* pFactory = nullptr;
+
+	// Reset output file, if any
+	PrepareOutputFile();
 
 	// Creating a window, for the later usage in Direct3D9 Device creation
 	WNDCLASS windowClass = { 0 };
@@ -260,100 +265,196 @@ void GpuCapabilityTester::Run(bool& _bD3d9SupportOut, bool& _bD3d11SupportOut, u
 		LogMessageFormatted("   Is Direct3D11 Supported: %s\n", _bD3d11SupportOut ? "TRUE" : "FALSE");
 	}
 
+	if (m_bOutputFileReady)
+	{
+		m_bOutputFileReady = false;
+
+		LogMessage("\nPlease find the log file here: ");
+		char caFullPath[1024];
+		if (GetFullPathNameA(gOutputFileName, 1024, caFullPath, nullptr))
+		{
+			LogMessageLine(caFullPath);
+		}
+		else
+		{
+			LogMessage("\nOops, for some reason the file name cannot be obtained.");
+		}
+	}
+
 	DeleteObject(windowHandle); //doing it just in case
 	SAFE_RELEASE(pFactory);
 }
 
-void GpuCapabilityTester::LogMessage(const char* _acMsg) const
+void GpuCapabilityTester::LogMessage(const char* _acMsg)
 {
-	if (m_bVerbose)
+	if (m_bOutputToDebug)
 	{
 		OutputDebugStringA(_acMsg);
-
-		if (m_bOutputToConsole)
-		{
-			cout << _acMsg;
-		}
 	}
-}
 
-void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...) const
-{
-	if (m_bVerbose)
+	if (m_bOutputToConsole)
 	{
-		char aBuffer[1024];
-		va_list _ArgList;
-		__crt_va_start(_ArgList, _acFormat);
-#pragma warning(suppress:28719)    // 28719
-		vsnprintf(aBuffer, 1024, _acFormat, _ArgList);
-		__crt_va_end(_ArgList);
+		cout << _acMsg;
+	}
 
-		OutputDebugStringA(aBuffer);
-
-		if (m_bOutputToConsole)
-		{
-			cout << aBuffer;
-		}
+	if (m_bOutputToFile)
+	{
+		OutputToFile(_acMsg);
 	}
 }
 
-void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg) const
+void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...)
 {
-	if (m_bVerbose)
+	char aBuffer[1024];
+	va_list _ArgList;
+	__crt_va_start(_ArgList, _acFormat);
+#pragma warning(suppress:28719)    // 28719
+	vsnprintf(aBuffer, 1024, _acFormat, _ArgList);
+	__crt_va_end(_ArgList);
+
+	if (m_bOutputToDebug)
+	{
+		OutputDebugStringA(aBuffer);
+	}
+
+	if (m_bOutputToConsole)
+	{
+		cout << aBuffer;
+	}
+
+	if (m_bOutputToFile)
+	{
+		OutputToFile(aBuffer);
+	}
+}
+
+void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg)
+{
+	if (m_bOutputToDebug)
 	{
 		OutputDebugStringW(_acMsg);
-
-		if (m_bOutputToConsole)
-		{
-			wcout << _acMsg;
-		}
 	}
-}
 
-void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...) const
-{
-	if (m_bVerbose)
+	if (m_bOutputToConsole)
 	{
-		wchar_t aBuffer[1024];
-		va_list _ArgList;
-		__crt_va_start(_ArgList, _acFormat);
-#pragma warning(suppress:28719)    // 28719
-		vswprintf(aBuffer, 1024, _acFormat, _ArgList);
-		__crt_va_end(_ArgList);
+		wcout << _acMsg;
+	}
 
-		OutputDebugStringW(aBuffer);
-
-		if (m_bOutputToConsole)
-		{
-			wcout << aBuffer;
-		}
+	if (m_bOutputToFile)
+	{
+		OutputToFileW(_acMsg);
 	}
 }
 
-void GpuCapabilityTester::LogMessageLine(const char* _acMsg) const
+void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...)
 {
-	if (m_bVerbose)
+	wchar_t aBuffer[1024];
+	va_list _ArgList;
+	__crt_va_start(_ArgList, _acFormat);
+#pragma warning(suppress:28719)    // 28719
+	vswprintf(aBuffer, 1024, _acFormat, _ArgList);
+	__crt_va_end(_ArgList);
+
+	if (m_bOutputToDebug)
+	{
+		OutputDebugStringW(aBuffer);
+	}
+
+	if (m_bOutputToConsole)
+	{
+		wcout << aBuffer;
+	}
+
+	if (m_bOutputToFile)
+	{
+		OutputToFileW(aBuffer);
+	}
+}
+
+void GpuCapabilityTester::LogMessageLine(const char* _acMsg)
+{
+	if (m_bOutputToDebug)
 	{
 		OutputDebugStringA(_acMsg);
 		OutputDebugStringA("\n");
+	}
 
-		if (m_bOutputToConsole)
+	if (m_bOutputToConsole)
+	{
+		wcout << _acMsg << endl;
+	}
+
+	if (m_bOutputToFile)
+	{
+		OutputToFile(_acMsg);
+		OutputToFile("\n");
+	}
+}
+
+void GpuCapabilityTester::LogMessageLineW(const wchar_t* _acMsg)
+{
+	if (m_bOutputToDebug)
+	{
+		OutputDebugStringW(_acMsg);
+		OutputDebugStringW(L"\n");
+	}
+
+	if (m_bOutputToConsole)
+	{
+		wcout << _acMsg << endl;
+	}
+
+	if (m_bOutputToFile)
+	{
+		OutputToFileW(_acMsg);
+		OutputToFileW(L"\n");
+	}
+}
+
+void GpuCapabilityTester::OutputToFile(const char* _acMsg)
+{
+	if (m_bOutputFileReady)
+	{
+		ofstream ofs;
+		ofs.open(gOutputFileName, ofstream::app);
+		if (ofs.is_open())
 		{
-			wcout << _acMsg << endl;
+			ofs << _acMsg;
+			ofs.close();
+		}
+		else
+		{
+			m_bOutputFileReady = false;
 		}
 	}
 }
 
-void GpuCapabilityTester::LogMessageLineW(const wchar_t* _acMsg) const
+void GpuCapabilityTester::PrepareOutputFile()
 {
-	if (m_bVerbose)
+	m_bOutputFileReady = false;
+	if (m_bOutputToFile)
 	{
-		OutputDebugStringW(_acMsg);
-		OutputDebugStringW(L"\n");
+		ofstream ofs;
+		ofs.open(gOutputFileName, ofstream::trunc);
+		m_bOutputFileReady = ofs.is_open();
+		ofs.close();
+	}
+}
 
-		if (m_bOutputToConsole)
+void GpuCapabilityTester::OutputToFileW(const wchar_t* _acMsg)
+{
+	if (m_bOutputFileReady)
+	{
+		wofstream ofs;
+		ofs.open(gOutputFileName, ofstream::app);
+		if (ofs.is_open())
 		{
-			wcout << _acMsg << endl;
+			ofs << _acMsg;
+			ofs.close();
+		}
+		else
+		{
+			m_bOutputFileReady = false;
 		}
 	}
 }

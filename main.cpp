@@ -8,12 +8,11 @@ using namespace std;
 
 int main()
 {
-	bool _bD3d9SupportOut, _bD3d11SupportOut;
-	unsigned _uAdapterDeviceId;
-    GpuCapabilityTester tester;
+	GpuCapabilityTester tester;
 	tester.SetOutputToConsole(true);
 	tester.SetOutputToFile(true);
-	tester.Run(_bD3d9SupportOut, _bD3d11SupportOut, _uAdapterDeviceId);
+	GpuRequirements reqs{};
+	auto caps = tester.FindOptimalAdapter( reqs );
 
 	cout << "\nPress any key to exit...";
 	getchar();

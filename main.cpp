@@ -9,11 +9,10 @@ using namespace std;
 int main()
 {
 	GpuCapabilityTester tester;
-	tester.SetOutputToConsole(true);
 	tester.SetOutputToFile(true);
 	GpuRequirements reqs{};
 	auto caps = tester.FindOptimalAdapter( reqs );
-
-	cout << "\nPress any key to exit...";
+	wcout << caps.m_srtLogMessages;
+	wcout << L"\nPress any key to exit...";
 	getchar();
 }

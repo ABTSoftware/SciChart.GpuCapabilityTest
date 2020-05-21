@@ -2,7 +2,6 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
-#include <map>
 #include <d3d9.h>
 #include <d3d11.h>
 
@@ -265,6 +264,9 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		}
 	}
 
+	// Output to string
+	caps.m_srtLogMessages = m_StringStream.str();
+
 	DeleteObject(windowHandle);
 	SAFE_RELEASE(pFactory);
 
@@ -286,6 +288,11 @@ void GpuCapabilityTester::LogMessage(const char* _acMsg)
 	if (m_bOutputToFile)
 	{
 		OutputToFile(_acMsg);
+	}
+
+	if ( m_bOutputToString )
+	{
+		m_StringStream << _acMsg;
 	}
 }
 
@@ -312,6 +319,11 @@ void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...)
 	{
 		OutputToFile(aBuffer);
 	}
+
+	if ( m_bOutputToString )
+	{
+		m_StringStream << aBuffer;
+	}
 }
 
 void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg)
@@ -329,6 +341,11 @@ void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg)
 	if (m_bOutputToFile)
 	{
 		OutputToFileW(_acMsg);
+	}
+
+	if ( m_bOutputToString )
+	{
+		m_StringStream << _acMsg;
 	}
 }
 
@@ -355,6 +372,11 @@ void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...)
 	{
 		OutputToFileW(aBuffer);
 	}
+
+	if ( m_bOutputToString )
+	{
+		m_StringStream << aBuffer;
+	}
 }
 
 void GpuCapabilityTester::LogMessageLine(const char* _acMsg)
@@ -367,13 +389,18 @@ void GpuCapabilityTester::LogMessageLine(const char* _acMsg)
 
 	if (m_bOutputToConsole)
 	{
-		wcout << _acMsg << endl;
+		cout << _acMsg << endl;
 	}
 
 	if (m_bOutputToFile)
 	{
 		OutputToFile(_acMsg);
 		OutputToFile("\n");
+	}
+
+	if (m_bOutputToString)
+	{
+		m_StringStream << _acMsg << endl;
 	}
 }
 
@@ -394,6 +421,11 @@ void GpuCapabilityTester::LogMessageLineW(const wchar_t* _acMsg)
 	{
 		OutputToFileW(_acMsg);
 		OutputToFileW(L"\n");
+	}
+
+	if ( m_bOutputToString )
+	{
+		m_StringStream << _acMsg << endl;
 	}
 }
 

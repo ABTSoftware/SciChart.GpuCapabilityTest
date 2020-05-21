@@ -1,6 +1,7 @@
 #pragma once
 
-#include <limits>
+#include <string>
+#include <sstream>
 
 struct GpuRequirements
 {
@@ -15,19 +16,23 @@ struct GpuCapabilities
 	bool m_bD3d11Support;
 	unsigned m_uAdapterDeviceId;
 	bool m_bLowVRam;
+	std::wstring m_srtLogMessages;
 };
 
 class GpuCapabilityTester
 {
 public:
-	size_t GetOutputToDebug() const { return m_bOutputToDebug; }
+	bool GetOutputToDebug() const { return m_bOutputToDebug; }
 	void SetOutputToDebug(bool _bValue) { m_bOutputToDebug = _bValue; }
 
-	size_t GetOutputToConsole() const { return m_bOutputToConsole; }
+	bool GetOutputToConsole() const { return m_bOutputToConsole; }
 	void SetOutputToConsole(bool _bValue) { m_bOutputToConsole = _bValue; }
 
-	size_t GetOutputToFile() const { return m_bOutputToFile; }
+	bool GetOutputToFile() const { return m_bOutputToFile; }
 	void SetOutputToFile(bool _bValue) { m_bOutputToFile = _bValue; }
+
+	bool GetOutputToString() const { return m_bOutputToString; }
+	void SetOutputToString(bool _bValue) { m_bOutputToString = _bValue; }
 
 	GpuCapabilities FindOptimalAdapter( const GpuRequirements& _Reqs );
 
@@ -42,9 +47,12 @@ private:
 	void OutputToFile(const char* _acMsg);
 	void OutputToFileW(const wchar_t* _acMsg);
 
-	bool m_bOutputToDebug = true;
+	bool m_bOutputToDebug = false;
 	bool m_bOutputToConsole = false;
 	bool m_bOutputToFile = false;
+	bool m_bOutputToString = true;
+
 	bool m_bOutputFileReady = false;
+	std::wstringstream m_StringStream;
 };
 

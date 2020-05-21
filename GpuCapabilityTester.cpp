@@ -86,6 +86,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 
 	IDXGIAdapter* pAdapter;
 	size_t bestRank = 0;
+	DXGI_ADAPTER_DESC bestDesc;
 	for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
 	{
 		DXGI_ADAPTER_DESC adapterDesc;
@@ -216,25 +217,20 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		// Rank memory (in megabytes)
 		rank += adapterDesc.DedicatedVideoMemory >> 20;
 
-		// Check if Low memory mode is required
-		bool bLowMem = (static_cast<double>(adapterDesc.DedicatedVideoMemory) / _Reqs.m_uLowVRamThreshold) < 1.0;
-		if ( bLowMem )
-		{
-			LogMessageLine( "\n      NOTE: the amount of Video Memory (VRAM) is low." );
-			LogMessageLine( "         If Visual Xccelerator Engine select this adapter," );
-			LogMessageLine( "         it will be running in low memory consumption mode." );
-			LogMessageLine( "         This might cause a performance drop or visual errors." );
-		}
-
-		LogMessageFormatted("\n   Rank: %d Points\n", rank);
+		// Print the rank
+		LogMessageFormatted( "\n   Rank: %d Points\n", rank );
 
 		if (rank >= bestRank)
 		{
+			// Check if Low memory mode is required
+			bool bLowMem = (static_cast<double>(adapterDesc.DedicatedVideoMemory) / _Reqs.m_uLowVRamThreshold) < 1.0;
+			
 			caps.m_uAdapterDeviceId = adapterDesc.DeviceId;
 			caps.m_bD3d9Support = bD3d9Success;
 			caps.m_bD3d11Support = bD3d9ExSuccess && bD3d11Success;
 			caps.m_bLowVRam = bLowMem;
 			bestRank = rank;
+			bestDesc = adapterDesc;
 		}
 
 		SAFE_RELEASE(pDevice);
@@ -262,6 +258,12 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		{
 			LogMessage("\nOops, for some reason the file name cannot be obtained.");
 		}
+	}
+
+	// Print friendly message
+	if ( caps.m_bLowVRam )
+	{
+		LogMessageFormattedW( L"\nHey this is SciChart here. Please help! Your GPU is too slow for my awesome graphics software! I detected you have an %s GPU. Please upgrade it because I'm feeling very constrained by %dMB of Video RAM. My super-powerful Visual Xccelerator engine can do so much better with 256MB+ of video memory. THX! :D", bestDesc.Description, bestDesc.DedicatedVideoMemory >> 20 );
 	}
 
 	// Output to string

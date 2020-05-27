@@ -260,8 +260,8 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		m_bOutputFileReady = false;
 
 		LogMessage("\nPlease find the log file here: ");
-		char caFullPath[1024];
-		if (GetFullPathNameA(gOutputFileName, 1024, caFullPath, nullptr))
+		char caFullPath[2048];
+		if (GetFullPathNameA(gOutputFileName, 2048, caFullPath, nullptr))
 		{
 			LogMessageLine(caFullPath);
 		}
@@ -311,11 +311,11 @@ void GpuCapabilityTester::LogMessage(const char* _acMsg)
 
 void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...)
 {
-	char aBuffer[1024];
+	char aBuffer[2048];
 	va_list _ArgList;
 	__crt_va_start(_ArgList, _acFormat);
 #pragma warning(suppress:28719)    // 28719
-	vsnprintf(aBuffer, 1024, _acFormat, _ArgList);
+	vsnprintf(aBuffer, 2048, _acFormat, _ArgList);
 	__crt_va_end(_ArgList);
 
 	if (m_bOutputToDebug)
@@ -364,11 +364,11 @@ void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg)
 
 void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...)
 {
-	wchar_t aBuffer[1024];
+	wchar_t aBuffer[2048];
 	va_list _ArgList;
 	__crt_va_start(_ArgList, _acFormat);
 #pragma warning(suppress:28719)    // 28719
-	vswprintf(aBuffer, 1024, _acFormat, _ArgList);
+	vswprintf(aBuffer, 2048, _acFormat, _ArgList);
 	__crt_va_end(_ArgList);
 
 	if (m_bOutputToDebug)

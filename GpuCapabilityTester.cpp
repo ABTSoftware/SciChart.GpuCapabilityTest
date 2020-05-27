@@ -12,6 +12,7 @@ using namespace std;
 const char gOutputFileName[] = "GpuCapability.log";
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+bool CheckGraphicsAdapterBlacklisted( const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter );
 
 GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& _Reqs )
 {
@@ -106,6 +107,14 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 
 		size_t rank = 0;
 		size_t dx9AdapterIndex = 0;
+
+		LogMessage( "      Determines whether the adapter is blacklisted due to its unstable work... " );
+		bool bBlacklisted = CheckGraphicsAdapterBlacklisted( adapterDesc.Description, _Reqs._srtBlacklist, _Reqs._cBlDelimiter );
+		LogMessageLine(bBlacklisted ? "TRUE" : "FALSE");
+		if (!bBlacklisted)
+		{
+			rank += 1000000;
+		}
 
 		LogMessage("      Trying to create Direct3D9 Device... ");
 		bool bD3d9Success;
@@ -208,7 +217,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		else if ( !bD3d9ExSuccess && bD3d11Success )
 		{
 			LogMessageLine( "\n      NOTE: the adapter is able to create Direct3D11 Device," );
-			LogMessageLine( "      hovewer for some reason it's unable to create DirectX9Ex Device." );
+			LogMessageLine( "      however for some reason it's unable to create DirectX9Ex Device." );
 			LogMessageLine( "      It looks like the adapter is not connected to a monitor." );
 			LogMessageLine( "      If you would like to run the SciChart on this adapter," );
 			LogMessageLine( "      please make sure that the monitor cable is plugged in." );
@@ -229,6 +238,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 			caps.m_bD3d9Support = bD3d9Success;
 			caps.m_bD3d11Support = bD3d9ExSuccess && bD3d11Success;
 			caps.m_bLowVRam = bLowMem;
+			caps.m_bBlacklisted = bBlacklisted;
 			bestRank = rank;
 			bestDesc = adapterDesc;
 		}
@@ -242,6 +252,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", caps.m_uAdapterDeviceId );
 		LogMessageFormatted("   Is Direct3D9 Supported: %s\n", caps.m_bD3d9Support ? "TRUE" : "FALSE");
 		LogMessageFormatted("   Is Direct3D11 Supported: %s\n", caps.m_bD3d11Support ? "TRUE" : "FALSE");
+		LogMessageFormatted("   Is Blacklisted: %s\n", caps.m_bBlacklisted? "TRUE" : "FALSE");
 	}
 
 	if (m_bOutputFileReady)
@@ -477,6 +488,32 @@ void GpuCapabilityTester::OutputToFileW(const wchar_t* _acMsg)
 			m_bOutputFileReady = false;
 		}
 	}
+}
+
+bool CheckGraphicsAdapterBlacklisted( const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter )
+{
+	const size_t _srtBlacklistLen = _srtBlacklist == nullptr ? 0 : wcslen( _srtBlacklist );
+	if ( _srtBlacklistLen )
+	{
+		const wchar_t* ptrEndPos;
+		const wchar_t* ptrBeginPos = _srtBlacklist;
+		do
+		{
+			ptrEndPos = wcschr( ptrBeginPos, _cBlDelimiter );
+			size_t count = ptrEndPos == nullptr
+				? _srtBlacklistLen - (ptrBeginPos - _srtBlacklist)
+				: ptrEndPos - ptrBeginPos;
+
+			if ( !wcsncmp( _strAdapterDesc, ptrBeginPos, count ) )
+			{
+				return true;
+			}
+
+			ptrBeginPos = ptrEndPos + 1;
+		} while ( ptrEndPos != nullptr );
+	}
+
+	return false;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)

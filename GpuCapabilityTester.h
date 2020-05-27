@@ -8,6 +8,8 @@ struct GpuRequirements
 	size_t m_D3d11MinFeatureLevel = 0xa100; // D3D_FEATURE_LEVEL_10_1;
 	size_t m_uLowVRamThreshold = 256 << 20; // 256Mb
 	bool m_bSupportBgra = true;
+	const wchar_t* _srtBlacklist;
+	wchar_t _cBlDelimiter;
 };
 
 struct GpuCapabilities
@@ -16,6 +18,7 @@ struct GpuCapabilities
 	bool m_bD3d11Support;
 	unsigned m_uAdapterDeviceId;
 	bool m_bLowVRam;
+	bool m_bBlacklisted;
 	std::wstring m_srtLogMessages;
 };
 

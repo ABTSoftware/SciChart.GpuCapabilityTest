@@ -8,8 +8,8 @@ struct GpuRequirements
 	size_t m_D3d11MinFeatureLevel = 0xa100; // D3D_FEATURE_LEVEL_10_1;
 	size_t m_uLowVRamThreshold = 256 << 20; // 256Mb
 	bool m_bSupportBgra = true;
-	const wchar_t* _srtBlacklist;
-	wchar_t _cBlDelimiter;
+	const wchar_t* m_srtBlacklist;
+	wchar_t m_cBlDelimiter;
 };
 
 struct GpuCapabilities

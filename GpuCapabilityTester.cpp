@@ -109,7 +109,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		size_t dx9AdapterIndex = 0;
 
 		LogMessage( "      Determines whether the adapter is blacklisted due to its unstable work... " );
-		bool bBlacklisted = CheckGraphicsAdapterBlacklisted( adapterDesc.Description, _Reqs._srtBlacklist, _Reqs._cBlDelimiter );
+		bool bBlacklisted = CheckGraphicsAdapterBlacklisted( adapterDesc.Description, _Reqs.m_srtBlacklist, _Reqs.m_cBlDelimiter );
 		LogMessageLine(bBlacklisted ? "TRUE" : "FALSE");
 		if (!bBlacklisted)
 		{

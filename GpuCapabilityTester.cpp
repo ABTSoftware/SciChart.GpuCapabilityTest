@@ -149,8 +149,6 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		LogMessageLine( bD3d9Success ? "SUCCESS" : "FAILED");
 		rank += 100000;
 
-		caps.m_bD3d9Support = bD3d9Success;
-
 		LogMessageLine("\n   Visual Xccelerator Engine Direct3D11 Compatibility");
 
 		LogMessage("      Trying to create Direct3D9Ex Device (WPF Compatibility)... ");
@@ -186,8 +184,6 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 			bD3d11Success = false;
 		}
 		LogMessageLine(bD3d11Success ? "SUCCESS" : "FAILED");
-
-		caps.m_bD3d11Support = bD3d9ExSuccess & bD3d11Success;
 
 		if (bD3d9ExSuccess && bD3d11Success)
 		{

@@ -20,7 +20,9 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 
 	// Clear caps
 	GpuCapabilities caps;
+	GpuCapabilities bestDeviceCaps;
 	memset( &caps, 0, sizeof( GpuCapabilities ) );
+	memset( &bestDeviceCaps, 0, sizeof( GpuCapabilities ) );
 
 	// Reset output file, if any
 	PrepareOutputFile();
@@ -234,11 +236,11 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 			// Check if Low memory mode is required
 			bool bLowMem = (static_cast<double>(adapterDesc.DedicatedVideoMemory) / _Reqs.m_uLowVRamThreshold) < 1.0;
 			
-			caps.m_uAdapterDeviceId = adapterDesc.DeviceId;
-			caps.m_bD3d9Support = bD3d9Success;
-			caps.m_bD3d11Support = bD3d9ExSuccess && bD3d11Success;
-			caps.m_bLowVRam = bLowMem;
-			caps.m_bBlacklisted = bBlacklisted;
+			bestDeviceCaps.m_uAdapterDeviceId = adapterDesc.DeviceId;
+			bestDeviceCaps.m_bD3d9Support = bD3d9Success;
+			bestDeviceCaps.m_bD3d11Support = bD3d9ExSuccess && bD3d11Success;
+			bestDeviceCaps.m_bLowVRam = bLowMem;
+			bestDeviceCaps.m_bBlacklisted = bBlacklisted;
 			bestRank = rank;
 			bestDesc = adapterDesc;
 		}
@@ -247,12 +249,12 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		SAFE_RELEASE(pAdapter);
 	}
 
-	if (caps.m_uAdapterDeviceId)
+	if ( bestDeviceCaps.m_uAdapterDeviceId )
 	{
-		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", caps.m_uAdapterDeviceId );
-		LogMessageFormatted("   Is Direct3D9 Supported: %s\n", caps.m_bD3d9Support ? "TRUE" : "FALSE");
-		LogMessageFormatted("   Is Direct3D11 Supported: %s\n", caps.m_bD3d11Support ? "TRUE" : "FALSE");
-		LogMessageFormatted("   Is Blacklisted: %s\n", caps.m_bBlacklisted? "TRUE" : "FALSE");
+		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", bestDeviceCaps.m_uAdapterDeviceId );
+		LogMessageFormatted("   Is Direct3D9 Supported: %s\n", bestDeviceCaps.m_bD3d9Support ? "TRUE" : "FALSE");
+		LogMessageFormatted("   Is Direct3D11 Supported: %s\n", bestDeviceCaps.m_bD3d11Support ? "TRUE" : "FALSE");
+		LogMessageFormatted("   Is Blacklisted: %s\n", bestDeviceCaps.m_bBlacklisted? "TRUE" : "FALSE");
 	}
 
 	if (m_bOutputFileReady)
@@ -272,18 +274,18 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 	}
 
 	// Print friendly message
-	if ( caps.m_bLowVRam )
+	if ( bestDeviceCaps.m_bLowVRam )
 	{
 		LogMessageFormattedW( L"\nHey this is SciChart here. Please help! Your GPU is too slow for my awesome graphics software! I detected you have an %s GPU. Please upgrade it because I'm feeling very constrained by %dMB of Video RAM. My super-powerful Visual Xccelerator engine can do so much better with 256MB+ of video memory. THX! :D", bestDesc.Description, bestDesc.DedicatedVideoMemory >> 20 );
 	}
 
 	// Output to string
-	caps.m_srtLogMessages = m_StringStream.str();
+	bestDeviceCaps.m_srtLogMessages = m_StringStream.str();
 
 	DeleteObject(windowHandle);
 	SAFE_RELEASE(pFactory);
 
-	return caps;
+	return bestDeviceCaps;
 }
 
 void GpuCapabilityTester::LogMessage(const char* _acMsg)

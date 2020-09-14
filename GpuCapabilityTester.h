@@ -8,7 +8,7 @@ struct GpuRequirements
 	size_t m_D3d11MinFeatureLevel = 0xa100; // D3D_FEATURE_LEVEL_10_1;
 	size_t m_uLowVRamThreshold = 256 << 20; // 256Mb
 	bool m_bSupportBgra = true;
-	const wchar_t* m_srtBlacklist;
+	std::wstring m_srtBlacklist;
 	wchar_t m_cBlDelimiter;
 };
 
@@ -37,7 +37,7 @@ public:
 	bool GetOutputToString() const { return m_bOutputToString; }
 	void SetOutputToString(bool _bValue) { m_bOutputToString = _bValue; }
 
-	GpuCapabilities FindOptimalAdapter( const GpuRequirements& _Reqs );
+	GpuCapabilities FindOptimalAdapter(const GpuRequirements& _Reqs);
 
 private:
 	void LogMessage(const char* _acMsg);

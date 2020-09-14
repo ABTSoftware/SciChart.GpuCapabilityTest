@@ -12,17 +12,17 @@ using namespace std;
 const char gOutputFileName[] = "GpuCapability.log";
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
-bool CheckGraphicsAdapterBlacklisted( const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter );
+bool CheckGraphicsAdapterBlacklisted(const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter);
 
-GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& _Reqs )
+GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _Reqs)
 {
 	IDXGIFactory* pFactory = nullptr;
 
 	// Clear caps
 	GpuCapabilities caps;
 	GpuCapabilities bestDeviceCaps;
-	memset( &caps, 0, sizeof( GpuCapabilities ) );
-	memset( &bestDeviceCaps, 0, sizeof( GpuCapabilities ) );
+	memset(&caps, 0, sizeof(GpuCapabilities));
+	memset(&bestDeviceCaps, 0, sizeof(GpuCapabilities));
 
 	// Reset output file, if any
 	PrepareOutputFile();
@@ -62,7 +62,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 
 	D3DPRESENT_PARAMETERS presentParams;
 	ZeroMemory(&presentParams, sizeof(presentParams));
-	presentParams.BackBufferFormat = D3DFMT_A8R8G8B8;
+	presentParams.BackBufferFormat = D3DFMT_UNKNOWN;
 	presentParams.BackBufferCount = 1;
 	presentParams.MultiSampleType = D3DMULTISAMPLE_NONE;
 	presentParams.MultiSampleQuality = 0;
@@ -74,8 +74,8 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 	presentParams.Flags = 0;
 	presentParams.FullScreen_RefreshRateInHz = D3DPRESENT_RATE_DEFAULT;
 	presentParams.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-	presentParams.BackBufferWidth = 0;
-	presentParams.BackBufferHeight = 0;
+	presentParams.BackBufferWidth = 2;
+	presentParams.BackBufferHeight = 2;
 
 	LogMessageLine("### GPU Capability Test ###");
 
@@ -103,15 +103,15 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 
 		LogMessageFormattedW(L"\nExamining Graphics Adapter: %s\n", adapterDesc.Description);
 		LogMessageFormattedW(L"   VRAM: %dMb\n", adapterDesc.DedicatedVideoMemory >> 20);
-		LogMessageFormattedW(L"   DeiceId: %d\n", adapterDesc.DeviceId);
+		LogMessageFormattedW(L"   DeviceId: %d\n", adapterDesc.DeviceId);
 
 		LogMessageLine("\n   Visual Xccelerator Engine Direct3D9 Compatibility");
 
 		size_t rank = 0;
 		size_t dx9AdapterIndex = 0;
 
-		LogMessage( "      Determines whether the adapter is blacklisted due to its unstable work... " );
-		bool bBlacklisted = CheckGraphicsAdapterBlacklisted( adapterDesc.Description, _Reqs.m_srtBlacklist, _Reqs.m_cBlDelimiter );
+		LogMessage("      Determines whether the adapter is blacklisted due to its unstable work... ");
+		bool bBlacklisted = CheckGraphicsAdapterBlacklisted(adapterDesc.Description, _Reqs.m_srtBlacklist.c_str(), _Reqs.m_cBlDelimiter);
 		LogMessageLine(bBlacklisted ? "TRUE" : "FALSE");
 		if (!bBlacklisted)
 		{
@@ -148,7 +148,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		{
 			bD3d9Success = false;
 		}
-		LogMessageLine( bD3d9Success ? "SUCCESS" : "FAILED");
+		LogMessageLine(bD3d9Success ? "SUCCESS" : "FAILED");
 		rank += 100000;
 
 		caps.m_bD3d9Support = bD3d9Success;
@@ -171,7 +171,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		{
 			bD3d9ExSuccess = false;
 		}
-		LogMessageLine( bD3d9ExSuccess ? "SUCCESS" : "FAILED");
+		LogMessageLine(bD3d9ExSuccess ? "SUCCESS" : "FAILED");
 
 		LogMessage("      Trying to create Direct3D11 Device... ");
 		ID3D11Device* pDevice;
@@ -216,26 +216,26 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 				LogMessageLine("               This might tend to low performance or visual errors.");
 			}
 		}
-		else if ( !bD3d9ExSuccess && bD3d11Success )
+		else if (!bD3d9ExSuccess && bD3d11Success)
 		{
-			LogMessageLine( "\n      NOTE: the adapter is able to create Direct3D11 Device," );
-			LogMessageLine( "      however for some reason it's unable to create DirectX9Ex Device." );
-			LogMessageLine( "      It looks like the adapter is not connected to a monitor." );
-			LogMessageLine( "      If you would like to run the SciChart on this adapter," );
-			LogMessageLine( "      please make sure that the monitor cable is plugged in." );
+			LogMessageLine("\n      NOTE: the adapter is able to create Direct3D11 Device,");
+			LogMessageLine("      however for some reason it's unable to create DirectX9Ex Device.");
+			LogMessageLine("      It looks like the adapter is not connected to a monitor.");
+			LogMessageLine("      If you would like to run the SciChart on this adapter,");
+			LogMessageLine("      please make sure that the monitor cable is plugged in.");
 		}
 
 		// Rank memory (in megabytes)
 		rank += adapterDesc.DedicatedVideoMemory >> 20;
 
 		// Print the rank
-		LogMessageFormatted( "\n   Rank: %d Points\n", rank );
+		LogMessageFormatted("\n   Rank: %d Points\n", rank);
 
 		if (rank >= bestRank)
 		{
 			// Check if Low memory mode is required
 			bool bLowMem = (static_cast<double>(adapterDesc.DedicatedVideoMemory) / _Reqs.m_uLowVRamThreshold) < 1.0;
-			
+
 			bestDeviceCaps.m_uAdapterDeviceId = adapterDesc.DeviceId;
 			bestDeviceCaps.m_bD3d9Support = bD3d9Success;
 			bestDeviceCaps.m_bD3d11Support = bD3d9ExSuccess && bD3d11Success;
@@ -249,12 +249,12 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 		SAFE_RELEASE(pAdapter);
 	}
 
-	if ( bestDeviceCaps.m_uAdapterDeviceId )
+	if (bestDeviceCaps.m_uAdapterDeviceId)
 	{
-		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", bestDeviceCaps.m_uAdapterDeviceId );
+		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", bestDeviceCaps.m_uAdapterDeviceId);
 		LogMessageFormatted("   Is Direct3D9 Supported: %s\n", bestDeviceCaps.m_bD3d9Support ? "TRUE" : "FALSE");
 		LogMessageFormatted("   Is Direct3D11 Supported: %s\n", bestDeviceCaps.m_bD3d11Support ? "TRUE" : "FALSE");
-		LogMessageFormatted("   Is Blacklisted: %s\n", bestDeviceCaps.m_bBlacklisted? "TRUE" : "FALSE");
+		LogMessageFormatted("   Is Blacklisted: %s\n", bestDeviceCaps.m_bBlacklisted ? "TRUE" : "FALSE");
 	}
 
 	if (m_bOutputFileReady)
@@ -274,9 +274,9 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& 
 	}
 
 	// Print friendly message
-	if ( bestDeviceCaps.m_bLowVRam )
+	if (bestDeviceCaps.m_bLowVRam)
 	{
-		LogMessageFormattedW( L"\nHey this is SciChart here. Please help! Your GPU is too slow for my awesome graphics software! I detected you have an %s GPU. Please upgrade it because I'm feeling very constrained by %dMB of Video RAM. My super-powerful Visual Xccelerator engine can do so much better with 256MB+ of video memory. THX! :D", bestDesc.Description, bestDesc.DedicatedVideoMemory >> 20 );
+		LogMessageFormattedW(L"\nHey this is SciChart here. Please help! Your GPU is too slow for my awesome graphics software! I detected you have an %s GPU. Please upgrade it because I'm feeling very constrained by %dMB of Video RAM. My super-powerful Visual Xccelerator engine can do so much better with 256MB+ of video memory. THX! :D", bestDesc.Description, bestDesc.DedicatedVideoMemory >> 20);
 	}
 
 	// Output to string
@@ -305,7 +305,7 @@ void GpuCapabilityTester::LogMessage(const char* _acMsg)
 		OutputToFile(_acMsg);
 	}
 
-	if ( m_bOutputToString )
+	if (m_bOutputToString)
 	{
 		m_StringStream << _acMsg;
 	}
@@ -335,7 +335,7 @@ void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...)
 		OutputToFile(aBuffer);
 	}
 
-	if ( m_bOutputToString )
+	if (m_bOutputToString)
 	{
 		m_StringStream << aBuffer;
 	}
@@ -358,7 +358,7 @@ void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg)
 		OutputToFileW(_acMsg);
 	}
 
-	if ( m_bOutputToString )
+	if (m_bOutputToString)
 	{
 		m_StringStream << _acMsg;
 	}
@@ -388,7 +388,7 @@ void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...)
 		OutputToFileW(aBuffer);
 	}
 
-	if ( m_bOutputToString )
+	if (m_bOutputToString)
 	{
 		m_StringStream << aBuffer;
 	}
@@ -438,7 +438,7 @@ void GpuCapabilityTester::LogMessageLineW(const wchar_t* _acMsg)
 		OutputToFileW(L"\n");
 	}
 
-	if ( m_bOutputToString )
+	if (m_bOutputToString)
 	{
 		m_StringStream << _acMsg << endl;
 	}
@@ -492,27 +492,27 @@ void GpuCapabilityTester::OutputToFileW(const wchar_t* _acMsg)
 	}
 }
 
-bool CheckGraphicsAdapterBlacklisted( const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter )
+bool CheckGraphicsAdapterBlacklisted(const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter)
 {
-	const size_t _srtBlacklistLen = _srtBlacklist == nullptr ? 0 : wcslen( _srtBlacklist );
-	if ( _srtBlacklistLen )
+	const size_t _srtBlacklistLen = _srtBlacklist == nullptr ? 0 : wcslen(_srtBlacklist);
+	if (_srtBlacklistLen)
 	{
 		const wchar_t* ptrEndPos;
 		const wchar_t* ptrBeginPos = _srtBlacklist;
 		do
 		{
-			ptrEndPos = wcschr( ptrBeginPos, _cBlDelimiter );
+			ptrEndPos = wcschr(ptrBeginPos, _cBlDelimiter);
 			size_t count = ptrEndPos == nullptr
 				? _srtBlacklistLen - (ptrBeginPos - _srtBlacklist)
 				: ptrEndPos - ptrBeginPos;
 
-			if ( !wcsncmp( _strAdapterDesc, ptrBeginPos, count ) )
+			if (!wcsncmp(_strAdapterDesc, ptrBeginPos, count))
 			{
 				return true;
 			}
 
 			ptrBeginPos = ptrEndPos + 1;
-		} while ( ptrEndPos != nullptr );
+		} while (ptrEndPos != nullptr);
 	}
 
 	return false;

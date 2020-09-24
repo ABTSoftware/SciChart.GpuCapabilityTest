@@ -62,7 +62,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 
 	D3DPRESENT_PARAMETERS presentParams;
 	ZeroMemory(&presentParams, sizeof(presentParams));
-	presentParams.BackBufferFormat = D3DFMT_UNKNOWN;
+	presentParams.BackBufferFormat = D3DFMT_A8R8G8B8;
 	presentParams.BackBufferCount = 1;
 	presentParams.MultiSampleType = D3DMULTISAMPLE_NONE;
 	presentParams.MultiSampleQuality = 0;
@@ -149,7 +149,6 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 			bD3d9Success = false;
 		}
 		LogMessageLine(bD3d9Success ? "SUCCESS" : "FAILED");
-		rank += 100000;
 
 		caps.m_bD3d9Support = bD3d9Success;
 
@@ -189,9 +188,9 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 		}
 		LogMessageLine(bD3d11Success ? "SUCCESS" : "FAILED");
 
-		caps.m_bD3d11Support = bD3d9ExSuccess & bD3d11Success;
+		caps.m_bD3d11Support = bD3d11Success;
 
-		if (bD3d9ExSuccess && bD3d11Success)
+		if (bD3d11Success)
 		{
 			// Is Features Level sufficient to run Visual Xccelerator Engine using Direct3D11?
 			if (featureLevel >= _Reqs.m_D3d11MinFeatureLevel)
@@ -238,7 +237,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 
 			bestDeviceCaps.m_uAdapterDeviceId = adapterDesc.DeviceId;
 			bestDeviceCaps.m_bD3d9Support = bD3d9Success;
-			bestDeviceCaps.m_bD3d11Support = bD3d9ExSuccess && bD3d11Success;
+			bestDeviceCaps.m_bD3d11Support = bD3d11Success;
 			bestDeviceCaps.m_bLowVRam = bLowMem;
 			bestDeviceCaps.m_bBlacklisted = bBlacklisted;
 			bestRank = rank;

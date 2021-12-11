@@ -19,6 +19,7 @@ struct GpuCapabilities
 	unsigned m_uAdapterDeviceId;
 	bool m_bLowVRam;
 	bool m_bBlacklisted;
+	bool m_bIsSoftware;
 	std::wstring m_srtLogMessages;
 };
 
@@ -37,7 +38,7 @@ public:
 	bool GetOutputToString() const { return m_bOutputToString; }
 	void SetOutputToString(bool _bValue) { m_bOutputToString = _bValue; }
 
-	GpuCapabilities FindOptimalAdapter(const GpuRequirements& _Reqs);
+	GpuCapabilities FindOptimalAdapter( const GpuRequirements& _Reqs );
 
 private:
 	void LogMessage(const char* _acMsg);

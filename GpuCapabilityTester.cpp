@@ -12,17 +12,17 @@ using namespace std;
 const char gOutputFileName[] = "GpuCapability.log";
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
-bool CheckGraphicsAdapterBlacklisted(const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter);
+bool CheckGraphicsAdapterBlacklisted( const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter );
 
-GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _Reqs)
+GpuCapabilities GpuCapabilityTester::FindOptimalAdapter( const GpuRequirements& _Reqs )
 {
 	IDXGIFactory* pFactory = nullptr;
 
 	// Clear caps
 	GpuCapabilities caps;
 	GpuCapabilities bestDeviceCaps;
-	memset(&caps, 0, sizeof(GpuCapabilities));
-	memset(&bestDeviceCaps, 0, sizeof(GpuCapabilities));
+	memset( &caps, 0, sizeof( GpuCapabilities ) );
+	memset( &bestDeviceCaps, 0, sizeof( GpuCapabilities ) );
 
 	// Reset output file, if any
 	PrepareOutputFile();
@@ -33,7 +33,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 	windowClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	windowClass.hInstance = nullptr;
 	windowClass.lpfnWndProc = WndProc;
-	windowClass.lpszClassName = L"A dummy Window"; //needs to be the same name
+	windowClass.lpszClassName = TEXT("A dummy Window"); //needs to be the same name
 	//when creating the window as well
 	windowClass.style = CS_HREDRAW | CS_VREDRAW;
 	//also register the class
@@ -90,15 +90,18 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 	IDXGIAdapter* pAdapter;
 	size_t bestRank = 0;
 	DXGI_ADAPTER_DESC bestDesc;
-	for (UINT i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
+	UINT i = 0;
+	for (; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND; ++i)
 	{
 		DXGI_ADAPTER_DESC adapterDesc;
 		pAdapter->GetDesc(&adapterDesc);
 
+		bool bIsSoftware = false;
+
 		// Skip Microsoft Basic Render Driver
 		if (wcscmp(adapterDesc.Description, L"Microsoft Basic Render Driver") == 0)
 		{
-			continue;
+			bIsSoftware = true;
 		}
 
 		LogMessageFormattedW(L"\nExamining Graphics Adapter: %s\n", adapterDesc.Description);
@@ -110,13 +113,18 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 		size_t rank = 0;
 		size_t dx9AdapterIndex = 0;
 
-		LogMessage("      Determines whether the adapter is blacklisted due to its unstable work... ");
-		bool bBlacklisted = CheckGraphicsAdapterBlacklisted(adapterDesc.Description, _Reqs.m_srtBlacklist.c_str(), _Reqs.m_cBlDelimiter);
+		LogMessage( "      Determines whether the adapter is blacklisted due to its unstable work... " );
+		bool bBlacklisted = CheckGraphicsAdapterBlacklisted( adapterDesc.Description, _Reqs.m_srtBlacklist.c_str(), _Reqs.m_cBlDelimiter );
 		LogMessageLine(bBlacklisted ? "TRUE" : "FALSE");
 		if (!bBlacklisted)
 		{
 			rank += 1000000;
 		}
+
+		if ( !bIsSoftware )
+        {
+            rank += 1000000;
+        }
 
 		LogMessage("      Trying to create Direct3D9 Device... ");
 		bool bD3d9Success;
@@ -148,7 +156,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 		{
 			bD3d9Success = false;
 		}
-		LogMessageLine(bD3d9Success ? "SUCCESS" : "FAILED");
+		LogMessageLine( bD3d9Success ? "SUCCESS" : "FAILED");
 
 		caps.m_bD3d9Support = bD3d9Success;
 
@@ -170,7 +178,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 		{
 			bD3d9ExSuccess = false;
 		}
-		LogMessageLine(bD3d9ExSuccess ? "SUCCESS" : "FAILED");
+		LogMessageLine( bD3d9ExSuccess ? "SUCCESS" : "FAILED");
 
 		LogMessage("      Trying to create Direct3D11 Device... ");
 		ID3D11Device* pDevice;
@@ -193,7 +201,7 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 		if (bD3d11Success)
 		{
 			// Is Features Level sufficient to run Visual Xccelerator Engine using Direct3D11?
-			if (featureLevel >= _Reqs.m_D3d11MinFeatureLevel)
+			if (static_cast< size_t >(featureLevel) >= _Reqs.m_D3d11MinFeatureLevel)
 			{
 				rank += 1000000;
 			}
@@ -215,31 +223,32 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 				LogMessageLine("               This might tend to low performance or visual errors.");
 			}
 		}
-		else if (!bD3d9ExSuccess && bD3d11Success)
+		else if ( !bD3d9ExSuccess && bD3d11Success )
 		{
-			LogMessageLine("\n      NOTE: the adapter is able to create Direct3D11 Device,");
-			LogMessageLine("      however for some reason it's unable to create DirectX9Ex Device.");
-			LogMessageLine("      It looks like the adapter is not connected to a monitor.");
-			LogMessageLine("      If you would like to run the SciChart on this adapter,");
-			LogMessageLine("      please make sure that the monitor cable is plugged in.");
+			LogMessageLine( "\n      NOTE: the adapter is able to create Direct3D11 Device," );
+			LogMessageLine( "      however for some reason it's unable to create DirectX9Ex Device." );
+			LogMessageLine( "      It looks like the adapter is not connected to a monitor." );
+			LogMessageLine( "      If you would like to run the SciChart on this adapter," );
+			LogMessageLine( "      please make sure that the monitor cable is plugged in." );
 		}
 
 		// Rank memory (in megabytes)
 		rank += adapterDesc.DedicatedVideoMemory >> 20;
 
 		// Print the rank
-		LogMessageFormatted("\n   Rank: %d Points\n", rank);
+		LogMessageFormatted( "\n   Rank: %d Points\n", rank );
 
 		if (rank >= bestRank)
 		{
 			// Check if Low memory mode is required
 			bool bLowMem = (static_cast<double>(adapterDesc.DedicatedVideoMemory) / _Reqs.m_uLowVRamThreshold) < 1.0;
-
+			
 			bestDeviceCaps.m_uAdapterDeviceId = adapterDesc.DeviceId;
 			bestDeviceCaps.m_bD3d9Support = bD3d9Success;
 			bestDeviceCaps.m_bD3d11Support = bD3d11Success;
 			bestDeviceCaps.m_bLowVRam = bLowMem;
 			bestDeviceCaps.m_bBlacklisted = bBlacklisted;
+			bestDeviceCaps.m_bIsSoftware = bIsSoftware;
 			bestRank = rank;
 			bestDesc = adapterDesc;
 		}
@@ -248,12 +257,22 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 		SAFE_RELEASE(pAdapter);
 	}
 
-	if (bestDeviceCaps.m_uAdapterDeviceId)
+	if(i == 0)
 	{
-		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", bestDeviceCaps.m_uAdapterDeviceId);
+		LogMessageFormatted("\nNo Graphics Adapters were found.\n");
+	}
+
+	if ( bestDeviceCaps.m_uAdapterDeviceId )
+	{
+		LogMessageFormatted("\nSelected Graphics Adapter, where DeviceId is: %d\n", bestDeviceCaps.m_uAdapterDeviceId );
 		LogMessageFormatted("   Is Direct3D9 Supported: %s\n", bestDeviceCaps.m_bD3d9Support ? "TRUE" : "FALSE");
 		LogMessageFormatted("   Is Direct3D11 Supported: %s\n", bestDeviceCaps.m_bD3d11Support ? "TRUE" : "FALSE");
-		LogMessageFormatted("   Is Blacklisted: %s\n", bestDeviceCaps.m_bBlacklisted ? "TRUE" : "FALSE");
+		LogMessageFormatted("   Is Blacklisted: %s\n", bestDeviceCaps.m_bBlacklisted? "TRUE" : "FALSE");
+	}
+
+	if ( bestDeviceCaps.m_bIsSoftware )
+	{
+		LogMessageFormatted( "\nWarning : Graphics is using software emulation, if you are using a VM, please consider enabling 3D acceleration\n" );
 	}
 
 	if (m_bOutputFileReady)
@@ -273,9 +292,9 @@ GpuCapabilities GpuCapabilityTester::FindOptimalAdapter(const GpuRequirements& _
 	}
 
 	// Print friendly message
-	if (bestDeviceCaps.m_bLowVRam)
+	if ( bestDeviceCaps.m_bLowVRam )
 	{
-		LogMessageFormattedW(L"\nHey this is SciChart here. Please help! Your GPU is too slow for my awesome graphics software! I detected you have an %s GPU. Please upgrade it because I'm feeling very constrained by %dMB of Video RAM. My super-powerful Visual Xccelerator engine can do so much better with 256MB+ of video memory. THX! :D", bestDesc.Description, bestDesc.DedicatedVideoMemory >> 20);
+		LogMessageFormattedW( L"\nHey this is SciChart here. Please help! Your GPU is too slow for my awesome graphics software! I detected you have an %s GPU. Please upgrade it because I'm feeling very constrained by %dMB of Video RAM. My super-powerful Visual Xccelerator engine can do so much better with 256MB+ of video memory. THX! :D", bestDesc.Description, bestDesc.DedicatedVideoMemory >> 20 );
 	}
 
 	// Output to string
@@ -304,7 +323,7 @@ void GpuCapabilityTester::LogMessage(const char* _acMsg)
 		OutputToFile(_acMsg);
 	}
 
-	if (m_bOutputToString)
+	if ( m_bOutputToString )
 	{
 		m_StringStream << _acMsg;
 	}
@@ -334,7 +353,7 @@ void GpuCapabilityTester::LogMessageFormatted(const char* _acFormat, ...)
 		OutputToFile(aBuffer);
 	}
 
-	if (m_bOutputToString)
+	if ( m_bOutputToString )
 	{
 		m_StringStream << aBuffer;
 	}
@@ -357,7 +376,7 @@ void GpuCapabilityTester::LogMessageW(const wchar_t* _acMsg)
 		OutputToFileW(_acMsg);
 	}
 
-	if (m_bOutputToString)
+	if ( m_bOutputToString )
 	{
 		m_StringStream << _acMsg;
 	}
@@ -387,7 +406,7 @@ void GpuCapabilityTester::LogMessageFormattedW(const wchar_t* _acFormat, ...)
 		OutputToFileW(aBuffer);
 	}
 
-	if (m_bOutputToString)
+	if ( m_bOutputToString )
 	{
 		m_StringStream << aBuffer;
 	}
@@ -437,7 +456,7 @@ void GpuCapabilityTester::LogMessageLineW(const wchar_t* _acMsg)
 		OutputToFileW(L"\n");
 	}
 
-	if (m_bOutputToString)
+	if ( m_bOutputToString )
 	{
 		m_StringStream << _acMsg << endl;
 	}
@@ -491,27 +510,27 @@ void GpuCapabilityTester::OutputToFileW(const wchar_t* _acMsg)
 	}
 }
 
-bool CheckGraphicsAdapterBlacklisted(const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter)
+bool CheckGraphicsAdapterBlacklisted( const wchar_t* _strAdapterDesc, const wchar_t* _srtBlacklist, wchar_t _cBlDelimiter )
 {
-	const size_t _srtBlacklistLen = _srtBlacklist == nullptr ? 0 : wcslen(_srtBlacklist);
-	if (_srtBlacklistLen)
+	const size_t _srtBlacklistLen = _srtBlacklist == nullptr ? 0 : wcslen( _srtBlacklist );
+	if ( _srtBlacklistLen )
 	{
 		const wchar_t* ptrEndPos;
 		const wchar_t* ptrBeginPos = _srtBlacklist;
 		do
 		{
-			ptrEndPos = wcschr(ptrBeginPos, _cBlDelimiter);
+			ptrEndPos = wcschr( ptrBeginPos, _cBlDelimiter );
 			size_t count = ptrEndPos == nullptr
 				? _srtBlacklistLen - (ptrBeginPos - _srtBlacklist)
 				: ptrEndPos - ptrBeginPos;
 
-			if (!wcsncmp(_strAdapterDesc, ptrBeginPos, count))
+			if ( !wcsncmp( _strAdapterDesc, ptrBeginPos, count ) )
 			{
 				return true;
 			}
 
 			ptrBeginPos = ptrEndPos + 1;
-		} while (ptrEndPos != nullptr);
+		} while ( ptrEndPos != nullptr );
 	}
 
 	return false;
@@ -525,6 +544,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
 		PostQuitMessage(0);
 		break;
 	default:
-		return DefWindowProc(hwnd, message, wparam, lparam);
+		break;
 	}
+	return DefWindowProc( hwnd, message, wparam, lparam );
 }
